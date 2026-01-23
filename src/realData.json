@@ -1,0 +1,531 @@
+[
+    {
+        "id": 1,
+        "coordinates": [
+            6.541,
+            3.392
+        ],
+        "demographics": {
+            "age": 35,
+            "gender": "Male"
+        },
+        "fear_indicators": {
+            "fear_robbery_street": 4,
+            "avoid_night": 5,
+            "safety_street_night": 2
+        },
+        "victimization": {
+            "stolen_from": "Yes"
+        },
+        "observed_environment": {
+            "has_streetlight": "No",
+            "street_type": "Alleyway",
+            "visible_disorder": [
+                "Litter",
+                "Graffiti"
+            ],
+            "proximity_to_market": "Yes"
+        }
+    },
+    {
+        "id": 2,
+        "coordinates": [
+            6.538,
+            3.395
+        ],
+        "demographics": {
+            "age": 28,
+            "gender": "Female"
+        },
+        "fear_indicators": {
+            "fear_robbery_street": 2,
+            "avoid_night": 2,
+            "safety_street_night": 4
+        },
+        "victimization": {
+            "stolen_from": "No"
+        },
+        "observed_environment": {
+            "has_streetlight": "Yes",
+            "street_type": "Major Road",
+            "visible_disorder": [],
+            "proximity_to_market": "No"
+        }
+    },
+    {
+        "id": 3,
+        "coordinates": [
+            6.540,
+            3.391
+        ],
+        "demographics": {
+            "age": 42,
+            "gender": "Female"
+        },
+        "fear_indicators": {
+            "fear_robbery_street": 5,
+            "avoid_night": 5,
+            "safety_street_night": 1
+        },
+        "victimization": {
+            "stolen_from": "Yes"
+        },
+        "observed_environment": {
+            "has_streetlight": "No",
+            "street_type": "Alleyway",
+            "visible_disorder": [
+                "Litter"
+            ],
+            "proximity_to_market": "No"
+        }
+    },
+    {
+        "id": 4,
+        "coordinates": [
+            6.542,
+            3.394
+        ],
+        "demographics": {
+            "age": 22,
+            "gender": "Male"
+        },
+        "fear_indicators": {
+            "fear_robbery_street": 1,
+            "avoid_night": 1,
+            "safety_street_night": 5
+        },
+        "victimization": {
+            "stolen_from": "No"
+        },
+        "observed_environment": {
+            "has_streetlight": "Yes",
+            "street_type": "Major Road",
+            "visible_disorder": [],
+            "proximity_to_market": "Yes"
+        }
+    },
+    {
+        "id": 5,
+        "coordinates": [
+            6.543,
+            3.390
+        ],
+        "demographics": {
+            "age": 55,
+            "gender": "Male"
+        },
+        "fear_indicators": {
+            "fear_robbery_street": 3,
+            "avoid_night": 3,
+            "safety_street_night": 3
+        },
+        "victimization": {
+            "stolen_from": "No"
+        },
+        "observed_environment": {
+            "has_streetlight": "Yes",
+            "street_type": "Footpath",
+            "visible_disorder": [
+                "Graffiti"
+            ],
+            "proximity_to_market": "No"
+        }
+    },
+    {
+        "id": 6,
+        "coordinates": [
+            6.539,
+            3.396
+        ],
+        "demographics": {
+            "age": 31,
+            "gender": "Female"
+        },
+        "fear_indicators": {
+            "fear_robbery_street": 4,
+            "avoid_night": 4,
+            "safety_street_night": 2
+        },
+        "victimization": {
+            "stolen_from": "No"
+        },
+        "observed_environment": {
+            "has_streetlight": "No",
+            "street_type": "Alleyway",
+            "visible_disorder": [
+                "Abandoned/uncompleted buildings"
+            ],
+            "proximity_to_market": "No"
+        }
+    },
+    {
+        "id": 7,
+        "coordinates": [
+            6.544,
+            3.393
+        ],
+        "demographics": {
+            "age": 45,
+            "gender": "Female"
+        },
+        "fear_indicators": {
+            "fear_robbery_street": 2,
+            "avoid_night": 3,
+            "safety_street_night": 4
+        },
+        "victimization": {
+            "stolen_from": "No"
+        },
+        "observed_environment": {
+            "has_streetlight": "Yes",
+            "street_type": "Major Road",
+            "visible_disorder": [],
+            "proximity_to_market": "Yes"
+        }
+    },
+    {
+        "id": 8,
+        "coordinates": [
+            6.537,
+            3.392
+        ],
+        "demographics": {
+            "age": 19,
+            "gender": "Male"
+        },
+        "fear_indicators": {
+            "fear_robbery_street": 5,
+            "avoid_night": 5,
+            "safety_street_night": 1
+        },
+        "victimization": {
+            "stolen_from": "Yes"
+        },
+        "observed_environment": {
+            "has_streetlight": "No",
+            "street_type": "Alleyway",
+            "visible_disorder": [
+                "Litter",
+                "Graffiti",
+                "Open drainage"
+            ],
+            "proximity_to_market": "No"
+        }
+    },
+    {
+        "id": 9,
+        "coordinates": [
+            6.545,
+            3.395
+        ],
+        "demographics": {
+            "age": 60,
+            "gender": "Male"
+        },
+        "fear_indicators": {
+            "fear_robbery_street": 1,
+            "avoid_night": 2,
+            "safety_street_night": 5
+        },
+        "victimization": {
+            "stolen_from": "No"
+        },
+        "observed_environment": {
+            "has_streetlight": "Yes",
+            "street_type": "Major Road",
+            "visible_disorder": [],
+            "proximity_to_market": "Yes"
+        }
+    },
+    {
+        "id": 10,
+        "coordinates": [
+            6.540,
+            3.397
+        ],
+        "demographics": {
+            "age": 27,
+            "gender": "Female"
+        },
+        "fear_indicators": {
+            "fear_robbery_street": 3,
+            "avoid_night": 3,
+            "safety_street_night": 3
+        },
+        "victimization": {
+            "stolen_from": "No"
+        },
+        "observed_environment": {
+            "has_streetlight": "Yes",
+            "street_type": "Footpath",
+            "visible_disorder": [
+                "Litter"
+            ],
+            "proximity_to_market": "No"
+        }
+    },
+    {
+        "id": 11,
+        "coordinates": [
+            6.538,
+            3.390
+        ],
+        "demographics": {
+            "age": 33,
+            "gender": "Make"
+        },
+        "fear_indicators": {
+            "fear_robbery_street": 4,
+            "avoid_night": 5,
+            "safety_street_night": 2
+        },
+        "victimization": {
+            "stolen_from": "Yes"
+        },
+        "observed_environment": {
+            "has_streetlight": "No",
+            "street_type": "Footpath",
+            "visible_disorder": [
+                "Graffiti"
+            ],
+            "proximity_to_market": "Yes"
+        }
+    },
+    {
+        "id": 12,
+        "coordinates": [
+            6.542,
+            3.398
+        ],
+        "demographics": {
+            "age": 50,
+            "gender": "Female"
+        },
+        "fear_indicators": {
+            "fear_robbery_street": 2,
+            "avoid_night": 2,
+            "safety_street_night": 4
+        },
+        "victimization": {
+            "stolen_from": "No"
+        },
+        "observed_environment": {
+            "has_streetlight": "Yes",
+            "street_type": "Major Road",
+            "visible_disorder": [],
+            "proximity_to_market": "No"
+        }
+    },
+    {
+        "id": 13,
+        "coordinates": [
+            6.544,
+            3.391
+        ],
+        "demographics": {
+            "age": 24,
+            "gender": "Male"
+        },
+        "fear_indicators": {
+            "fear_robbery_street": 5,
+            "avoid_night": 5,
+            "safety_street_night": 1
+        },
+        "victimization": {
+            "stolen_from": "Yes"
+        },
+        "observed_environment": {
+            "has_streetlight": "No",
+            "street_type": "Alleyway",
+            "visible_disorder": [
+                "Abandoned/uncompleted buildings",
+                "Litter"
+            ],
+            "proximity_to_market": "No"
+        }
+    },
+    {
+        "id": 14,
+        "coordinates": [
+            6.539,
+            3.393
+        ],
+        "demographics": {
+            "age": 41,
+            "gender": "Female"
+        },
+        "fear_indicators": {
+            "fear_robbery_street": 1,
+            "avoid_night": 1,
+            "safety_street_night": 5
+        },
+        "victimization": {
+            "stolen_from": "No"
+        },
+        "observed_environment": {
+            "has_streetlight": "Yes",
+            "street_type": "Major Road",
+            "visible_disorder": [],
+            "proximity_to_market": "Yes"
+        }
+    },
+    {
+        "id": 15,
+        "coordinates": [
+            6.541,
+            3.396
+        ],
+        "demographics": {
+            "age": 29,
+            "gender": "Male"
+        },
+        "fear_indicators": {
+            "fear_robbery_street": 3,
+            "avoid_night": 4,
+            "safety_street_night": 3
+        },
+        "victimization": {
+            "stolen_from": "No"
+        },
+        "observed_environment": {
+            "has_streetlight": "No",
+            "street_type": "Footpath",
+            "visible_disorder": [
+                "Litter"
+            ],
+            "proximity_to_market": "No"
+        }
+    },
+    {
+        "id": 16,
+        "coordinates": [
+            6.543,
+            3.395
+        ],
+        "demographics": {
+            "age": 37,
+            "gender": "Female"
+        },
+        "fear_indicators": {
+            "fear_robbery_street": 4,
+            "avoid_night": 5,
+            "safety_street_night": 2
+        },
+        "victimization": {
+            "stolen_from": "Yes"
+        },
+        "observed_environment": {
+            "has_streetlight": "No",
+            "street_type": "Alleyway",
+            "visible_disorder": [
+                "Graffiti",
+                "Open drainage"
+            ],
+            "proximity_to_market": "Yes"
+        }
+    },
+    {
+        "id": 17,
+        "coordinates": [
+            6.537,
+            3.394
+        ],
+        "demographics": {
+            "age": 52,
+            "gender": "Male"
+        },
+        "fear_indicators": {
+            "fear_robbery_street": 2,
+            "avoid_night": 2,
+            "safety_street_night": 4
+        },
+        "victimization": {
+            "stolen_from": "No"
+        },
+        "observed_environment": {
+            "has_streetlight": "Yes",
+            "street_type": "Major Road",
+            "visible_disorder": [],
+            "proximity_to_market": "No"
+        }
+    },
+    {
+        "id": 18,
+        "coordinates": [
+            6.545,
+            3.392
+        ],
+        "demographics": {
+            "age": 21,
+            "gender": "Female"
+        },
+        "fear_indicators": {
+            "fear_robbery_street": 5,
+            "avoid_night": 5,
+            "safety_street_night": 1
+        },
+        "victimization": {
+            "stolen_from": "Yes"
+        },
+        "observed_environment": {
+            "has_streetlight": "No",
+            "street_type": "Alleyway",
+            "visible_disorder": [
+                "Abandoned/uncompleted buildings"
+            ],
+            "proximity_to_market": "No"
+        }
+    },
+    {
+        "id": 19,
+        "coordinates": [
+            6.540,
+            3.394
+        ],
+        "demographics": {
+            "age": 44,
+            "gender": "Male"
+        },
+        "fear_indicators": {
+            "fear_robbery_street": 1,
+            "avoid_night": 1,
+            "safety_street_night": 5
+        },
+        "victimization": {
+            "stolen_from": "No"
+        },
+        "observed_environment": {
+            "has_streetlight": "Yes",
+            "street_type": "Major Road",
+            "visible_disorder": [],
+            "proximity_to_market": "Yes"
+        }
+    },
+    {
+        "id": 20,
+        "coordinates": [
+            6.542,
+            3.392
+        ],
+        "demographics": {
+            "age": 26,
+            "gender": "Female"
+        },
+        "fear_indicators": {
+            "fear_robbery_street": 3,
+            "avoid_night": 3,
+            "safety_street_night": 3
+        },
+        "victimization": {
+            "stolen_from": "No"
+        },
+        "observed_environment": {
+            "has_streetlight": "Yes",
+            "street_type": "Footpath",
+            "visible_disorder": [
+                "Litter"
+            ],
+            "proximity_to_market": "No"
+        }
+    }
+]
