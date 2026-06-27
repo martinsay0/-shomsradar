@@ -1,7 +1,8 @@
 import React from 'react';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, Cell, ScatterChart, Scatter } from 'recharts';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, Cell, ScatterChart, Scatter, PieChart, Pie } from 'recharts';
+import { Activity } from 'lucide-react';
 
-const Dashboard = ({ data }) => {
+const Dashboard = ({ data, showNearRepeats, nearRepeatData }) => {
     // Metric: Infrastructure Gap (Nighttime Safety Drop)
     // Filter: No Streetlights
     const noLightPoints = data.filter(p => p.observed_environment.has_streetlight === "No");
@@ -60,13 +61,27 @@ const Dashboard = ({ data }) => {
         rate: Math.round((victimByStreet[type].victims / victimByStreet[type].total) * 100)
     }));
 
-    // Chart 3: Social Shield Scatter (Cohesion vs Fear)
-    // X: Social Cohesion, Y: Fear (fear_robbery_street)
     const scatterData = data.map(p => ({
         x: p.social?.social_cohesion || 0,
         y: p.fear_indicators.fear_robbery_street,
         name: `Loc ${p.id}`
     })).filter(p => p.x > 0); // Filter out points without social data if any
+
+    // Top 3 Risk Interventions
+    const topRisks = [...data]
+        .sort((a, b) => (b.future_risk_score || 0) - (a.future_risk_score || 0))
+        .slice(0, 3);
+
+    const getRecommendation = (p) => {
+        const recs = [];
+        if (p.observed_environment.has_streetlight === "No") recs.push("Streetlight Installation");
+        const hasDebris = p.observed_environment.visible_disorder.some(d => d.includes("Abandoned") || d.includes("Litter"));
+        if (hasDebris) recs.push("Debris Clearing");
+        if (p.observed_environment.street_type === "Alleyway") recs.push("Increased Patrols");
+        
+        if (recs.length === 0) return "General Monitoring";
+        return `High priority for ${recs.join(" and ")}`;
+    };
 
     return (
         <div className="grid grid-cols-1 gap-6 p-4 pb-20">
@@ -84,6 +99,34 @@ const Dashboard = ({ data }) => {
                 </div>
             </div>
 
+            {/* Recommended Interventions Panel */}
+            <div className="bg-slate-800 p-4 rounded-xl border border-slate-700 shadow-lg">
+                <h3 className="text-sm font-semibold text-slate-300 mb-4 flex items-center gap-2">
+                    <span className="w-2 h-2 rounded-full bg-orange-500 animate-pulse"></span>
+                    Recommended Interventions
+                </h3>
+                <div className="space-y-3">
+                    {topRisks.map((p, idx) => (
+                        <div key={`risk-rec-${p.id}`} className="bg-slate-900 p-3 rounded-lg border border-slate-700/50">
+                            <div className="flex justify-between items-start mb-1">
+                                <span className="text-xs font-mono text-slate-400">
+                                    Coordinate [{p.coordinates[0].toFixed(2)}, {p.coordinates[1].toFixed(2)}]
+                                </span>
+                                <span className="text-xs font-bold text-red-400 bg-red-500/10 px-2 py-0.5 rounded">
+                                    Risk: {p.future_risk_score}
+                                </span>
+                            </div>
+                            <p className="text-sm text-slate-200">
+                                {getRecommendation(p)}
+                            </p>
+                        </div>
+                    ))}
+                    {topRisks.length === 0 && (
+                        <p className="text-xs text-slate-400">No high risk zones detected.</p>
+                    )}
+                </div>
+            </div>
+
             {/* Chart 3: Social Shield */}
             <div className="bg-slate-800 p-4 rounded-xl border border-slate-700 h-64 shadow-lg">
                 <h3 className="text-sm font-semibold text-slate-300 mb-4">The "Social Shield": Cohesion vs Fear</h3>
@@ -97,6 +140,36 @@ const Dashboard = ({ data }) => {
                     </ScatterChart>
                 </ResponsiveContainer>
             </div>
+
+            {/* Near-Repeat Contagion Chart */}
+            {showNearRepeats && nearRepeatData?.stats && (
+                <div className="bg-slate-800 p-4 rounded-xl border border-red-500/30 h-64 shadow-[0_0_15px_rgba(239,68,68,0.1)]">
+                    <h3 className="text-sm font-semibold text-red-400 mb-4 flex items-center gap-2">
+                        <Activity className="w-4 h-4" /> Near-Repeat Risk Contagion
+                    </h3>
+                    <ResponsiveContainer width="100%" height="80%">
+                        <PieChart>
+                            <Pie
+                                data={[
+                                    { name: 'Clustered Risks', value: nearRepeatData.stats.clusteredCount || 0 },
+                                    { name: 'Isolated Incidents', value: nearRepeatData.stats.isolatedCount || 0 }
+                                ]}
+                                cx="50%"
+                                cy="50%"
+                                innerRadius={40}
+                                outerRadius={70}
+                                paddingAngle={5}
+                                dataKey="value"
+                            >
+                                <Cell key="cell-0" fill="#ef4444" />
+                                <Cell key="cell-1" fill="#475569" />
+                            </Pie>
+                            <Tooltip contentStyle={{ backgroundColor: '#1e293b', border: '1px solid #334155', color: '#fff' }} />
+                            <Legend verticalAlign="bottom" height={36} wrapperStyle={{ fontSize: '11px', color: '#94a3b8' }}/>
+                        </PieChart>
+                    </ResponsiveContainer>
+                </div>
+            )}
 
             {/* Chart 1 */}
             <div className="bg-slate-800 p-4 rounded-xl border border-slate-700 h-64 shadow-lg">

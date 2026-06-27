@@ -1,105 +1,169 @@
 import pandas as pd
 import json
 import os
+import glob
 
-def convert_csv_to_json(input_file='survey_data.csv', output_file='realData.json'):
+def convert_csv_to_json(input_pattern='survey_data*.xlsx', output_file='realData.json'):
     """
-    Converts survey CSV data into the specific JSON format required for the Fearscape Analyzer app.
+    Converts survey CSV/Excel data into the specific JSON format required for the Fearscape Analyzer app.
+    It loads coordinates from survey_data(1).xlsx sheets and merges them with the survey responses in survey_data(2).xlsx.
     """
     
-    # 1. LOAD DATA
-    # If your CSV headers are different, you can rename them here or change the code below.
-    # For example: df = pd.read_csv(input_file).rename(columns={'Q_B1_Age': 'B1'})
+    # 1. LOAD COORDINATES (survey_data(1).xlsx)
+    print("Loading coordinates from survey_data(1).xlsx...")
     try:
-        df = pd.read_csv(input_file)
-        print(f"Successfully loaded {len(df)} records from {input_file}")
-    except FileNotFoundError:
-        print(f"Error: Could not find {input_file}. Please make sure the file exists.")
+        xl1 = pd.ExcelFile('survey_data(1).xlsx')
+        points_dfs = []
+        for sheet in xl1.sheet_names:
+            if sheet in ['PHOTOS', 'TRACKS', 'TRACK_POINTS', 'FEATURE_POINTS']:
+                continue
+            df = xl1.parse(sheet)
+            if 'ID' in df.columns and ('Latitude' in df.columns or 'Lat' in df.columns):
+                # Unify columns to ID, Latitude, Longitude, Remarks
+                df_clean = df[['ID', 'Latitude', 'Longitude', 'Remarks']].copy() if 'Latitude' in df.columns else df[['ID', 'Lat', 'Lon', 'Remarks']].copy()
+                df_clean.columns = ['ID', 'Latitude', 'Longitude', 'Remarks']
+                df_clean['sheet'] = sheet
+                points_dfs.append(df_clean)
+        
+        df_coords = pd.concat(points_dfs, ignore_index=True)
+        # Convert ID to numeric
+        df_coords['ID'] = pd.to_numeric(df_coords['ID'], errors='coerce')
+        df_coords = df_coords.dropna(subset=['ID'])
+        df_coords['ID'] = df_coords['ID'].astype(int)
+        print(f"Successfully loaded {len(df_coords)} coordinate points from {len(points_dfs)} sheets.")
+    except Exception as e:
+        print(f"Error loading coordinates: {e}")
         return
 
-    # 2. DATA CLEANING & PREPARATION
-    
-    # Ensure numeric fields are actually numeric, filling NaNs with 0
-    numeric_cols = ['B1', 'D2', 'D6', 'E8', 'lat', 'lng']
-    for col in numeric_cols:
-        if col in df.columns:
-            df[col] = pd.to_numeric(df[col], errors='coerce').fillna(0)
+    # 2. LOAD SURVEY RESPONSES (survey_data(2).xlsx)
+    print("Loading survey responses from survey_data(2).xlsx...")
+    try:
+        # Skip the second row (which contains the question texts as labels)
+        df_survey = pd.read_excel('survey_data(2).xlsx', skiprows=[1])
+        # Convert SN to numeric
+        df_survey['SN'] = pd.to_numeric(df_survey['SN'], errors='coerce')
+        df_survey = df_survey.dropna(subset=['SN'])
+        df_survey['SN'] = df_survey['SN'].astype(int)
+        print(f"Successfully loaded {len(df_survey)} survey responses.")
+    except Exception as e:
+        print(f"Error loading survey responses: {e}")
+        return
 
-    # 3. BUILD JSON STRUCTURE
-    # We iterate through the dataframe and construct the dictionary for each row
+    # 3. MERGE DATAFRAMES
+    print("Merging coordinates and survey responses...")
+    df_merged = pd.merge(df_coords, df_survey, left_on='ID', right_on='SN', how='inner')
+    print(f"Merged dataset has {len(df_merged)} records.")
+
+    # 4. BUILD JSON STRUCTURE
     json_data = []
 
-    for index, row in df.iterrows():
-        
-        # LOGIC: Clean 'Visible signs of disorder' (K8)
-        # Check if it's a string, then split. If it's empty/NaN, use empty list.
-        disorder_raw = row.get('K8')
+    def safe_int(val):
+        try:
+            return int(float(val)) if pd.notnull(val) else 0
+        except:
+            return 0
+
+    def safe_float(val):
+        try:
+            return float(val) if pd.notnull(val) else 0.0
+        except:
+            return 0.0
+
+    def safe_str(val):
+        if pd.isna(val):
+            return "Unknown"
+        return str(val).strip()
+
+    for index, row in df_merged.iterrows():
+        # Clean gender/demographics
+        gender = safe_str(row.get('B2', "Unknown"))
+        if gender in ['SURULERE', 'ABULE OJA', 'IKEJA LGA']:
+            gender = "Unknown"
+
+        # Get visible disorder lists (J7 is comma-separated string)
+        disorder_raw = row.get('J7')
         disorder_list = []
         if isinstance(disorder_raw, str):
             # Split by comma and strip whitespace from each item
-            disorder_list = [item.strip() for item in disorder_raw.split(',')]
+            disorder_list = [item.strip() for item in disorder_raw.split(',') if item.strip()]
         
-        # LOGIC: Construct the single record
+        # Clean streetlight
+        streetlight_raw = safe_str(row.get('J1', "No"))
+        if streetlight_raw in ['Yes', 'No']:
+            streetlight = streetlight_raw
+        elif streetlight_raw.lower().startswith('yes'):
+            streetlight = 'Yes'
+        else:
+            streetlight = 'No'
+            
+        # Clean street type
+        street_type_raw = safe_str(row.get('J3', "Unknown"))
+        if 'alley' in street_type_raw.lower():
+            street_type = 'Alleyway'
+        elif 'footpath' in street_type_raw.lower() or 'foot path' in street_type_raw.lower():
+            street_type = 'Footpath'
+        else:
+            street_type = street_type_raw
+
+        # Clean proximity to market
+        market_raw = safe_str(row.get('J9', "No"))
+        market = 'Yes' if 'market' in market_raw.lower() else 'No'
+
+        # Vigilante proximity: E4 is agreement 1-5. Let's make it true if E4 >= 3
+        vigilante_val = safe_int(row.get('E4', 0))
+        vigilante_present = True if vigilante_val >= 3 else False
+
+        # Social cohesion: H2 is willing to help each other, 1-5.
+        cohesion = safe_int(row.get('H2', 0))
+
+        # Fear indicators:
+        # safety_day is derived as 6 - C3 (where C3 is avoided daytime, 1 is never, mapping to 5)
+        avoid_day_val = safe_int(row.get('C3', 1))
+        safety_day = max(1, min(5, 6 - avoid_day_val))
+
         record = {
-            "id": row.get('id', index + 1), # Use 'id' column or fallback to row index
-            
-            # Combine lat/lng into array
+            "id": safe_int(row.get('ID')),
+            "street_name": safe_str(row.get('A2', "Unknown")),
             "coordinates": [
-                float(row.get('lat', 0)), 
-                float(row.get('lng', 0))
+                safe_float(row.get('Latitude', 0.0)), 
+                safe_float(row.get('Longitude', 0.0))
             ],
-            
             "demographics": {
-                "age": int(row.get('B1', 0)),
-                "gender": str(row.get('B2', "Unknown"))
+                "age": safe_int(row.get('B1', 0)),
+                "gender": gender
             },
-            
             "fear_indicators": {
-                "fear_robbery_street": int(row.get('D2', 0)),
-                "avoid_night": int(row.get('D6', 0)),
-                "safety_street_night": int(row.get('E8', 0))
+                "fear_robbery_street": safe_int(row.get('C2', 0)),
+                "avoid_night": safe_int(row.get('C4', 0)),
+                "safety_night": safe_int(row.get('D4', 0)),
+                "safety_day": safety_day
             },
-            
             "victimization": {
-                "stolen_from": str(row.get('C1', "No"))
+                "stolen_from": safe_str(row.get('F2', "No"))
             },
-            
             "observed_environment": {
-                "has_streetlight": str(row.get('K1', "No")),
-                "street_type": str(row.get('K3', "Unknown")),
+                "has_streetlight": streetlight,
+                "street_type": street_type,
                 "visible_disorder": disorder_list,
-                "proximity_to_market": str(row.get('K10_Market', "No"))
+                "proximity_to_market": market
+            },
+            "social": {
+                "vigilante_proximity": vigilante_present,
+                "social_cohesion": cohesion
             }
         }
-        
         json_data.append(record)
 
-    # 4. SAVE OUTPUT
+    # 5. SAVE OUTPUT
+    # Save both locally and directly to src/realData.json
     with open(output_file, 'w') as f:
         json.dump(json_data, f, indent=2)
+    
+    src_output = os.path.join('src', 'realData.json')
+    with open(src_output, 'w') as f:
+        json.dump(json_data, f, indent=2)
         
-    print(f"Conversion complete! Saved {len(json_data)} records to {output_file}")
+    print(f"Conversion complete! Saved {len(json_data)} records to {output_file} and {src_output}")
 
 if __name__ == "__main__":
-    # Create a dummy CSV if one doesn't exist, just for testing purposes
-    if not os.path.exists('survey_data.csv'):
-        print("No 'survey_data.csv' found. Creating a dummy sample file for you to test...")
-        dummy_data = {
-            'id': [1, 2],
-            'lat': [6.541, 6.543],
-            'lng': [3.392, 3.394],
-            'B1': [35, 28],
-            'B2': ['Male', 'Female'],
-            'C1': ['Yes', 'No'],
-            'D2': [4, 2],
-            'D6': [5, 1],
-            'E8': [2, 4],
-            'K1': ['No', 'Yes'],
-            'K3': ['Alleyway', 'Major road'],
-            'K8': ['Litter, Graffiti', 'None'],
-            'K10_Market': ['Yes', 'No']
-        }
-        pd.DataFrame(dummy_data).to_csv('survey_data.csv', index=False)
-        print("Created dictionary 'survey_data.csv'.")
-
     convert_csv_to_json()

@@ -1,49 +1,172 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import MapComponent from './MapComponent';
 import Dashboard from './Dashboard';
-import { mockData } from './mockData';
+import realData from './realData.json';
 import DayNightToggle from './DayNightToggle';
 import SearchBar from './SearchBar';
 import SafetyCard from './SafetyCard';
 import { calculateRiskScore } from './utils/riskAnalysis';
+import { calculateNearRepeats } from './utils/nearRepeat';
+import { calculateLISAHotspots } from './utils/hotspotAnalysis';
+import { exportToPDF, exportGeoJSON } from './utils/exportManager';
+import ExportControls from './ExportControls';
 import {
     Radar,
     AlertTriangle,
+    Shield,
+    X,
+    Activity,
+    Hexagon,
     Lightbulb,
     Footprints,
     LayoutDashboard,
-    Menu
+    Menu,
+    Flame,
+    Target,
+    Download,
+    Camera,
+    Play
 } from 'lucide-react';
 
 function App() {
     const [sidebarOpen, setSidebarOpen] = useState(false);
     const [isNightMode, setIsNightMode] = useState(false);
+    const [rightTab, setRightTab] = useState('advanced');
+    const [isExporting, setIsExporting] = useState(false);
     const [filters, setFilters] = useState({
         brokenWindows: false,
         darkSpots: false,
         escapeRoutes: false,
     });
 
+    const [showHeatmap, setShowHeatmap] = useState(false);
+    const [showRiskZones, setShowRiskZones] = useState(false);
+
+    // Layer Opacity State
+    const [layerOpacity, setLayerOpacity] = useState({
+        heatmap: 0.8,
+        riskZones: 0.1,
+        nearRepeat: 0.8,
+        lisa: 0.5
+    });
+
+    // Advanced KDE State
+    const [kdeBandwidth, setKdeBandwidth] = useState(150); // 50m - 500m
+    const [kdeDecay, setKdeDecay] = useState('Gaussian');
+    const [kdeWeight, setKdeWeight] = useState('Fear Score');
+    const [kdeLayerType, setKdeLayerType] = useState('Overall Fear');
+
+    // RTM Weights State
+    const [rtmWeights, setRtmWeights] = useState({
+        darkSpots: 0.4,
+        brokenWindows: 0.3,
+        escapeRoutes: 0.3
+    });
+
+    // Near-Repeat State
+    const [showNearRepeats, setShowNearRepeats] = useState(false);
+    const [nearRepeatBand, setNearRepeatBand] = useState(200); // 100m to 400m
+    const [nearRepeatData, setNearRepeatData] = useState({ linkLines: [], propagationZones: [], stats: {} });
+
+    // Recalculate Near-Repeats
+    useEffect(() => {
+        if (showNearRepeats) {
+            setNearRepeatData(calculateNearRepeats(realData, nearRepeatBand));
+        }
+    }, [showNearRepeats, nearRepeatBand]);
+
+    const filteredData = useMemo(() => {
+        return realData.filter(item => {
+            if (filters.brokenWindows) {
+                const hasBadDisorder = item.observed_environment.visible_disorder.some(d =>
+                    d.includes("Abandoned") || d === "Graffiti"
+                );
+                if (!hasBadDisorder) return false;
+            }
+            if (filters.darkSpots) {
+                if (item.observed_environment.has_streetlight !== "No") return false;
+            }
+            if (filters.escapeRoutes) {
+                const type = item.observed_environment.street_type;
+                if (type !== "Alleyway" && type !== "Footpath") return false;
+            }
+            return true;
+        }).map(item => {
+            let future_risk_score = 0;
+            if (item.observed_environment.has_streetlight === "No") future_risk_score += 30;
+            const hasBadDisorder = item.observed_environment.visible_disorder.some(d =>
+                d.includes("Abandoned") || d.includes("Litter")
+            );
+            if (hasBadDisorder) future_risk_score += 40;
+            if (item.observed_environment.street_type === "Alleyway") future_risk_score += 20;
+            
+            return { ...item, future_risk_score };
+        });
+    }, [filters]);
+
+    // LISA Hotspot State
+    const [showLisa, setShowLisa] = useState(false);
+    const [lisaResolution, setLisaResolution] = useState(150);
+    const [lisaData, setLisaData] = useState({ grid: null, stats: {} });
+
+    // Recalculate LISA on filter or resolution change
+    useEffect(() => {
+        if (showLisa) {
+            setLisaData(calculateLISAHotspots(filteredData, lisaResolution));
+        }
+    }, [showLisa, lisaResolution, filteredData]);
+
     // Search & Report State
     const [searchReport, setSearchReport] = useState(null);
+    const [searchPolygon, setSearchPolygon] = useState(null);
 
     const toggleFilter = (key) => {
         setFilters(prev => ({ ...prev, [key]: !prev[key] }));
     };
 
+    const handleStoryPreset = (preset) => {
+        // Reset all
+        setFilters({ brokenWindows: false, darkSpots: false, escapeRoutes: false });
+        setShowHeatmap(false); setShowRiskZones(false); setShowNearRepeats(false); setShowLisa(false);
+        setIsNightMode(false);
+        
+        setTimeout(() => {
+            if (preset === 'Nighttime Fear') {
+                setIsNightMode(true);
+                setFilters(prev => ({...prev, darkSpots: true}));
+                setShowHeatmap(true);
+                setKdeLayerType('Dark Spots Only');
+                setRightTab('advanced');
+            } else if (preset === 'Broken Windows') {
+                setFilters(prev => ({...prev, brokenWindows: true}));
+                setShowRiskZones(true);
+                setRightTab('advanced');
+            } else if (preset === 'Contagion') {
+                setShowNearRepeats(true);
+                setShowLisa(true);
+                setRightTab('advanced');
+            }
+        }, 100);
+    };
+
+    const handleExportPDF = async () => {
+        setIsExporting(true);
+        const success = await exportToPDF('map-export-container', 'analytics-panel');
+        setIsExporting(false);
+    };
+
     const handleSearch = (query) => {
         // Simple client-side search simulation
-        // In a real app, this would use a Geocoding API
-        // Here, we search our mockData for street names
-        const found = mockData.find(p => p.street_name && p.street_name.toLowerCase().includes(query.toLowerCase()));
+        const found = realData.find(p => p.street_name && p.street_name.toLowerCase().includes(query.toLowerCase()));
 
         if (found) {
-            const report = calculateRiskScore(found.coordinates[0], found.coordinates[1], mockData);
+            const report = calculateRiskScore(found.coordinates[0], found.coordinates[1], realData, rtmWeights);
             setSearchReport(report);
-            // Ideally we would also pan the map to 'found.coordinates'
+            setSearchPolygon(report.polygon || null);
         } else {
             // No match found
             setSearchReport({ hasData: false });
+            setSearchPolygon(null);
         }
     };
 
@@ -53,10 +176,11 @@ function App() {
                 const { latitude, longitude } = position.coords;
                 // Since we are mocking, and the user is likely NOT in Shomolu, 
                 // this might return 0 results unless we fake the coords to be in Shomolu
-                // For demo purposes, we will pick a random valid location from MockData to simulate "User is here"
-                const randomPoint = mockData[Math.floor(Math.random() * mockData.length)];
-                const report = calculateRiskScore(randomPoint.coordinates[0], randomPoint.coordinates[1], mockData);
+                // For demo purposes, we will pick a random valid location from realData to simulate "User is here"
+                const randomPoint = realData[Math.floor(Math.random() * realData.length)];
+                const report = calculateRiskScore(randomPoint.coordinates[0], randomPoint.coordinates[1], realData, rtmWeights);
                 setSearchReport(report);
+                setSearchPolygon(report.polygon || null);
             }, (error) => {
                 console.error("Error getting location:", error);
                 alert("Could not get your location.");
@@ -65,32 +189,6 @@ function App() {
             alert("Geolocation is not supported by this browser.");
         }
     };
-
-    const filteredData = useMemo(() => {
-        return mockData.filter(item => {
-            // If a filter is active, the item must match the criteria.
-            // If multiple filters are active, it must match ALL (AND logic).
-
-            if (filters.brokenWindows) {
-                // disorder contains "Abandoned..." or "Graffiti"
-                const hasBadDisorder = item.observed_environment.visible_disorder.some(d =>
-                    d.includes("Abandoned") || d === "Graffiti"
-                );
-                if (!hasBadDisorder) return false;
-            }
-
-            if (filters.darkSpots) {
-                if (item.observed_environment.has_streetlight !== "No") return false;
-            }
-
-            if (filters.escapeRoutes) {
-                const type = item.observed_environment.street_type;
-                if (type !== "Alleyway" && type !== "Footpath") return false;
-            }
-
-            return true;
-        });
-    }, [filters]);
 
     return (
         <div className="flex h-screen w-full bg-slate-900 text-slate-100 overflow-hidden font-sans">
@@ -110,8 +208,8 @@ function App() {
       `}>
                 <div className="p-6 h-full flex flex-col">
                     <div className="flex items-center gap-3 mb-8 group cursor-default">
-                        <div className="p-2 bg-indigo-600 rounded-lg shadow-lg shadow-indigo-500/20 transition-transform group-hover:scale-110">
-                            <Radar className="w-6 h-6 text-white group-hover:animate-spin-slow" />
+                        <div className="w-10 h-10 rounded-xl overflow-hidden shadow-lg shadow-indigo-500/20 border border-indigo-500/30 transition-transform group-hover:scale-110 flex items-center justify-center bg-slate-900">
+                            <img src="/logo.png" alt="ShomsRadar Logo" className="w-full h-full object-cover" />
                         </div>
                         <div>
                             <h1 className="font-bold text-lg leading-tight tracking-tight">Shoms<br /><span className="text-indigo-400">Radar</span></h1>
@@ -119,10 +217,26 @@ function App() {
                         </div>
                     </div>
 
+                    <div className="mb-8 space-y-2">
+                        <h2 className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-3">Story Presets</h2>
+                        <button onClick={() => handleStoryPreset('Nighttime Fear')} className="w-full flex items-center gap-3 p-3 rounded-xl border bg-slate-900 border-slate-800 text-slate-300 hover:border-indigo-500 transition-all text-left">
+                            <Play className="w-4 h-4 text-indigo-400" />
+                            <div className="text-sm font-medium">Nighttime Fear Hotspots</div>
+                        </button>
+                        <button onClick={() => handleStoryPreset('Broken Windows')} className="w-full flex items-center gap-3 p-3 rounded-xl border bg-slate-900 border-slate-800 text-slate-300 hover:border-purple-500 transition-all text-left">
+                            <Play className="w-4 h-4 text-purple-400" />
+                            <div className="text-sm font-medium">Broken Windows Predictive Zones</div>
+                        </button>
+                        <button onClick={() => handleStoryPreset('Contagion')} className="w-full flex items-center gap-3 p-3 rounded-xl border bg-slate-900 border-slate-800 text-slate-300 hover:border-red-500 transition-all text-left">
+                            <Play className="w-4 h-4 text-red-400" />
+                            <div className="text-sm font-medium">Risk Contagion & LISA</div>
+                        </button>
+                    </div>
+
                     <div className="space-y-6 flex-1">
 
                         <div className="space-y-2">
-                            <h2 className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-3">Analysis Modes</h2>
+                            <h2 className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-3">Data Filters</h2>
 
                             {/* Filter 1: Broken Windows */}
                             <button
@@ -174,13 +288,41 @@ function App() {
 
                         </div>
 
-                        <div className="p-4 bg-slate-900 rounded-xl border border-slate-800">
+                        <div className="space-y-2 mt-6">
+                            <h2 className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-3">RTM Weights Engine</h2>
+                            <div className="p-4 bg-slate-900 border border-slate-800 rounded-xl space-y-4">
+                                <div className="space-y-1">
+                                    <label className="text-xs text-slate-400 flex justify-between">
+                                        <span>Dark Spots</span>
+                                        <span>{Math.round(rtmWeights.darkSpots * 100)}%</span>
+                                    </label>
+                                    <input type="range" min="0" max="1" step="0.1" value={rtmWeights.darkSpots} onChange={(e) => setRtmWeights({...rtmWeights, darkSpots: Number(e.target.value)})} className="w-full accent-yellow-500" />
+                                </div>
+                                <div className="space-y-1">
+                                    <label className="text-xs text-slate-400 flex justify-between">
+                                        <span>Broken Windows</span>
+                                        <span>{Math.round(rtmWeights.brokenWindows * 100)}%</span>
+                                    </label>
+                                    <input type="range" min="0" max="1" step="0.1" value={rtmWeights.brokenWindows} onChange={(e) => setRtmWeights({...rtmWeights, brokenWindows: Number(e.target.value)})} className="w-full accent-red-500" />
+                                </div>
+                                <div className="space-y-1">
+                                    <label className="text-xs text-slate-400 flex justify-between">
+                                        <span>Escape Routes</span>
+                                        <span>{Math.round(rtmWeights.escapeRoutes * 100)}%</span>
+                                    </label>
+                                    <input type="range" min="0" max="1" step="0.1" value={rtmWeights.escapeRoutes} onChange={(e) => setRtmWeights({...rtmWeights, escapeRoutes: Number(e.target.value)})} className="w-full accent-blue-500" />
+                                </div>
+                                <p className="text-[10px] text-slate-500 leading-tight">Weights adjust predictive Risk Terrain Modeling (RTM) severity when querying locations.</p>
+                            </div>
+                        </div>
+
+                        <div className="p-4 bg-slate-900 rounded-xl border border-slate-800 mt-6">
                             <h3 className="text-sm font-semibold text-slate-300 mb-2 flex items-center gap-2">
                                 <LayoutDashboard className="w-4 h-4 text-indigo-400" /> Status
                             </h3>
                             <div className="text-sm text-slate-400 flex justify-between">
                                 <span>Visible Points:</span>
-                                <span className="text-white font-mono">{filteredData.length} / {mockData.length}</span>
+                                <span className="text-white font-mono">{filteredData.length} / {realData.length}</span>
                             </div>
                             {filteredData.length === 0 && (
                                 <p className="text-xs text-red-400 mt-2">No areas match all selected criteria.</p>
@@ -209,15 +351,24 @@ function App() {
                 </div>
 
                 <div className="flex-1 flex flex-col lg:flex-row h-full overflow-hidden">
-
                     {/* Map Section - Takes 2/3 on desktop */}
-                    <div className="flex-1 h-[50vh] lg:h-full p-4 lg:p-6 relative">
+                    <div id="map-export-container" className="flex-1 h-[50vh] lg:h-full p-4 lg:p-6 relative">
+                        <ExportControls 
+                            filteredData={filteredData}
+                            filtersText={Object.entries(filters).filter(([k,v])=>v).map(([k])=>k).join(', ') || 'None'}
+                            activeLayersText={[showHeatmap&&'Heatmap', showRiskZones&&'RTM', showNearRepeats&&'Near-Repeat', showLisa&&'LISA'].filter(Boolean).join(', ') || 'Base'}
+                            mapElementId="map-export-container"
+                            statsElementId="analytics-panel"
+                        />
                         <SearchBar onSearch={handleSearch} onUseLocation={handleUseLocation} />
 
                         {searchReport && (
                             <SafetyCard
                                 report={searchReport}
-                                onClose={() => setSearchReport(null)}
+                                onClose={() => {
+                                    setSearchReport(null);
+                                    setSearchPolygon(null);
+                                }}
                             />
                         )}
 
@@ -233,20 +384,161 @@ function App() {
                             <DayNightToggle isNightMode={isNightMode} onToggle={() => setIsNightMode(!isNightMode)} />
                         </div>
 
-                        <MapComponent data={filteredData} isNightMode={isNightMode} />
+                        <MapComponent 
+                            data={filteredData} 
+                            isNightMode={isNightMode} 
+                            showHeatmap={showHeatmap} 
+                            showRiskZones={showRiskZones}
+                            kdeBandwidth={kdeBandwidth}
+                            kdeDecay={kdeDecay}
+                            kdeWeight={kdeWeight}
+                            kdeLayerType={kdeLayerType}
+                            searchPolygon={searchPolygon}
+                            searchReport={searchReport}
+                            showNearRepeats={showNearRepeats}
+                            nearRepeatData={nearRepeatData}
+                            showLisa={showLisa}
+                            lisaData={lisaData}
+                            layerOpacity={layerOpacity}
+                        />
                     </div>
 
                     {/* Dashboard Sidebar - Takes 1/3 on desktop, scrollable */}
-                    <div className="h-[50vh] lg:h-full lg:w-[400px] xl:w-[450px] bg-slate-900 border-l border-slate-800 overflow-y-auto">
-                        <div className="p-4 lg:p-6">
-                            <h2 className="text-xl font-bold mb-6 text-slate-100 flex items-center gap-2">
-                                Analytics
-                                <span className="px-2 py-0.5 rounded-full bg-indigo-500/20 text-indigo-300 text-xs font-normal">Real-time</span>
-                            </h2>
-                            <Dashboard data={filteredData} />
+                    <div id="analytics-panel" className="h-[50vh] lg:h-full lg:w-[400px] xl:w-[450px] bg-slate-900 border-l border-slate-800 overflow-y-auto flex flex-col">
+                        <div className="p-4 lg:p-6 flex-1">
+                            <div className="flex border-b border-slate-800 mb-6 gap-6">
+                                <button onClick={() => setRightTab('metrics')} className={`pb-2 text-sm font-semibold transition-colors ${rightTab === 'metrics' ? 'text-indigo-400 border-b-2 border-indigo-400' : 'text-slate-500 hover:text-slate-300'}`}>Metrics Overview</button>
+                                <button onClick={() => setRightTab('advanced')} className={`pb-2 text-sm font-semibold transition-colors ${rightTab === 'advanced' ? 'text-indigo-400 border-b-2 border-indigo-400' : 'text-slate-500 hover:text-slate-300'}`}>Advanced Analytics</button>
+                            </div>
+
+                            {rightTab === 'metrics' ? (
+                                <Dashboard data={filteredData} showNearRepeats={showNearRepeats} nearRepeatData={nearRepeatData} showLisa={showLisa} lisaData={lisaData} />
+                            ) : (
+                                <div className="space-y-8 animate-in fade-in slide-in-from-right-4">
+                                    {/* Layer Manager */}
+                                    <div>
+                                        <h3 className="text-lg font-bold text-slate-100 mb-4">GIS Layer Manager</h3>
+                                        
+                                        <div className="space-y-4">
+                                            {/* KDE Heatmap */}
+                                            <div className="bg-slate-800 p-4 rounded-xl border border-slate-700 relative overflow-hidden">
+                                                <div className="flex justify-between items-center mb-4">
+                                                    <div className="flex items-center gap-3">
+                                                        <Flame className={`w-5 h-5 ${showHeatmap ? 'text-orange-500' : 'text-slate-500'}`} />
+                                                        <div>
+                                                            <div className="font-semibold text-sm text-slate-200">KDE Heatmap</div>
+                                                            <div className="text-[10px] text-slate-400" title="Kernel Density Estimation visualizes continuous hotspots.">Density estimation • {kdeBandwidth}m</div>
+                                                        </div>
+                                                    </div>
+                                                    <button onClick={() => setShowHeatmap(!showHeatmap)} className={`w-12 h-6 rounded-full transition-colors relative ${showHeatmap ? 'bg-orange-500' : 'bg-slate-600'}`}>
+                                                        <div className={`w-4 h-4 rounded-full bg-white absolute top-1 transition-all ${showHeatmap ? 'left-7' : 'left-1'}`} />
+                                                    </button>
+                                                </div>
+                                                {showHeatmap && (
+                                                    <div className="space-y-3 pt-3 border-t border-slate-700/50">
+                                                        <div className="flex justify-between items-center text-xs">
+                                                            <span className="text-slate-400">Opacity</span>
+                                                            <input type="range" min="0.1" max="1" step="0.1" value={layerOpacity.heatmap} onChange={e => setLayerOpacity({...layerOpacity, heatmap: Number(e.target.value)})} className="w-32 accent-orange-500" />
+                                                        </div>
+                                                        <div className="flex justify-between items-center text-xs">
+                                                            <span className="text-slate-400">Radius</span>
+                                                            <input type="range" min="50" max="500" step="10" value={kdeBandwidth} onChange={e => setKdeBandwidth(Number(e.target.value))} className="w-32 accent-orange-500" />
+                                                        </div>
+                                                        <div className="flex justify-between items-center text-xs">
+                                                            <span className="text-slate-400">Weight</span>
+                                                            <select value={kdeWeight} onChange={e => setKdeWeight(e.target.value)} className="bg-slate-900 border border-slate-700 rounded p-1 text-slate-300">
+                                                                <option>None</option><option>Fear Score</option><option>Environmental Severity</option>
+                                                            </select>
+                                                        </div>
+                                                    </div>
+                                                )}
+                                            </div>
+
+                                            {/* Predictive Risk Zones */}
+                                            <div className="bg-slate-800 p-4 rounded-xl border border-slate-700">
+                                                <div className="flex justify-between items-center">
+                                                    <div className="flex items-center gap-3">
+                                                        <Target className={`w-5 h-5 ${showRiskZones ? 'text-purple-500' : 'text-slate-500'}`} />
+                                                        <div>
+                                                            <div className="font-semibold text-sm text-slate-200">Predictive Risk Zones</div>
+                                                            <div className="text-[10px] text-slate-400" title="RTM surfaces generated from environmental risk factors.">RTM surfaces • 150m buffer</div>
+                                                        </div>
+                                                    </div>
+                                                    <button onClick={() => setShowRiskZones(!showRiskZones)} className={`w-12 h-6 rounded-full transition-colors relative ${showRiskZones ? 'bg-purple-500' : 'bg-slate-600'}`}>
+                                                        <div className={`w-4 h-4 rounded-full bg-white absolute top-1 transition-all ${showRiskZones ? 'left-7' : 'left-1'}`} />
+                                                    </button>
+                                                </div>
+                                                {showRiskZones && (
+                                                    <div className="space-y-3 pt-4 mt-3 border-t border-slate-700/50">
+                                                        <div className="flex justify-between items-center text-xs">
+                                                            <span className="text-slate-400">Opacity</span>
+                                                            <input type="range" min="0.05" max="0.5" step="0.05" value={layerOpacity.riskZones} onChange={e => setLayerOpacity({...layerOpacity, riskZones: Number(e.target.value)})} className="w-32 accent-purple-500" />
+                                                        </div>
+                                                    </div>
+                                                )}
+                                            </div>
+
+                                            {/* LISA Hotspots */}
+                                            <div className="bg-slate-800 p-4 rounded-xl border border-slate-700">
+                                                <div className="flex justify-between items-center mb-4">
+                                                    <div className="flex items-center gap-3">
+                                                        <Hexagon className={`w-5 h-5 ${showLisa ? 'text-blue-500' : 'text-slate-500'}`} />
+                                                        <div>
+                                                            <div className="font-semibold text-sm text-slate-200">LISA Hotspots</div>
+                                                            <div className="text-[10px] text-slate-400" title="Getis-Ord Gi* local indicator of spatial association.">Hex-grid statistics • {lisaResolution}m</div>
+                                                        </div>
+                                                    </div>
+                                                    <button onClick={() => setShowLisa(!showLisa)} className={`w-12 h-6 rounded-full transition-colors relative ${showLisa ? 'bg-blue-500' : 'bg-slate-600'}`}>
+                                                        <div className={`w-4 h-4 rounded-full bg-white absolute top-1 transition-all ${showLisa ? 'left-7' : 'left-1'}`} />
+                                                    </button>
+                                                </div>
+                                                {showLisa && (
+                                                    <div className="space-y-3 pt-3 border-t border-slate-700/50">
+                                                        <div className="flex justify-between items-center text-xs">
+                                                            <span className="text-slate-400">Opacity</span>
+                                                            <input type="range" min="0.1" max="1" step="0.1" value={layerOpacity.lisa} onChange={e => setLayerOpacity({...layerOpacity, lisa: Number(e.target.value)})} className="w-32 accent-blue-500" />
+                                                        </div>
+                                                        <div className="flex justify-between items-center text-xs">
+                                                            <span className="text-slate-400">Resolution</span>
+                                                            <input type="range" min="50" max="250" step="25" value={lisaResolution} onChange={e => setLisaResolution(Number(e.target.value))} className="w-32 accent-blue-500" />
+                                                        </div>
+                                                    </div>
+                                                )}
+                                            </div>
+
+                                            {/* Near-Repeat */}
+                                            <div className="bg-slate-800 p-4 rounded-xl border border-slate-700">
+                                                <div className="flex justify-between items-center mb-4">
+                                                    <div className="flex items-center gap-3">
+                                                        <Activity className={`w-5 h-5 ${showNearRepeats ? 'text-red-500' : 'text-slate-500'}`} />
+                                                        <div>
+                                                            <div className="font-semibold text-sm text-slate-200">Near-Repeat Linkages</div>
+                                                            <div className="text-[10px] text-slate-400" title="Spatially contagious risk propagation zones.">Contagion zones • {nearRepeatBand}m</div>
+                                                        </div>
+                                                    </div>
+                                                    <button onClick={() => setShowNearRepeats(!showNearRepeats)} className={`w-12 h-6 rounded-full transition-colors relative ${showNearRepeats ? 'bg-red-500' : 'bg-slate-600'}`}>
+                                                        <div className={`w-4 h-4 rounded-full bg-white absolute top-1 transition-all ${showNearRepeats ? 'left-7' : 'left-1'}`} />
+                                                    </button>
+                                                </div>
+                                                {showNearRepeats && (
+                                                    <div className="space-y-3 pt-3 border-t border-slate-700/50">
+                                                        <div className="flex justify-between items-center text-xs">
+                                                            <span className="text-slate-400">Opacity</span>
+                                                            <input type="range" min="0.1" max="1" step="0.1" value={layerOpacity.nearRepeat} onChange={e => setLayerOpacity({...layerOpacity, nearRepeat: Number(e.target.value)})} className="w-32 accent-red-500" />
+                                                        </div>
+                                                        <div className="flex justify-between items-center text-xs">
+                                                            <span className="text-slate-400">Spatial Band</span>
+                                                            <input type="range" min="100" max="400" step="50" value={nearRepeatBand} onChange={e => setNearRepeatBand(Number(e.target.value))} className="w-32 accent-red-500" />
+                                                        </div>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
                         </div>
                     </div>
-
                 </div>
             </main>
         </div>
