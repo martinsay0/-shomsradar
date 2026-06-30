@@ -68,12 +68,6 @@ function App() {
     const [nearRepeatBand, setNearRepeatBand] = useState(200); // 100m to 400m
     const [nearRepeatData, setNearRepeatData] = useState({ linkLines: [], propagationZones: [], stats: {} });
 
-    useEffect(() => {
-        if (showNearRepeats) {
-            setNearRepeatData(calculateNearRepeats(filteredData, nearRepeatBand));
-        }
-    }, [showNearRepeats, nearRepeatBand, filteredData]);
-
     const filteredData = useMemo(() => {
         return realData.filter(item => {
             if (filters.brokenWindows) {
@@ -102,6 +96,12 @@ function App() {
             return { ...item, future_risk_score };
         });
     }, [filters]);
+
+    useEffect(() => {
+        if (showNearRepeats) {
+            setNearRepeatData(calculateNearRepeats(filteredData, nearRepeatBand));
+        }
+    }, [showNearRepeats, nearRepeatBand, filteredData]);
 
     // LISA Hotspot State
     const [showLisa, setShowLisa] = useState(false);
