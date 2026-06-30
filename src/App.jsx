@@ -68,12 +68,11 @@ function App() {
     const [nearRepeatBand, setNearRepeatBand] = useState(200); // 100m to 400m
     const [nearRepeatData, setNearRepeatData] = useState({ linkLines: [], propagationZones: [], stats: {} });
 
-    // Recalculate Near-Repeats
     useEffect(() => {
         if (showNearRepeats) {
-            setNearRepeatData(calculateNearRepeats(realData, nearRepeatBand));
+            setNearRepeatData(calculateNearRepeats(filteredData, nearRepeatBand));
         }
-    }, [showNearRepeats, nearRepeatBand]);
+    }, [showNearRepeats, nearRepeatBand, filteredData]);
 
     const filteredData = useMemo(() => {
         return realData.filter(item => {
@@ -190,9 +189,41 @@ function App() {
         }
     };
 
-    return (
-        <div className="flex h-screen w-full bg-slate-900 text-slate-100 overflow-hidden font-sans">
+        <div className="flex flex-col h-screen w-full bg-slate-900 text-slate-100 overflow-hidden font-sans">
+            {/* Top Navbar */}
+            <header className="h-[72px] bg-slate-950 border-b border-slate-800 flex items-center justify-between px-6 z-50 shrink-0">
+                <div className="flex items-center gap-3 group cursor-default w-72">
+                    <div className="w-10 h-10 rounded-xl overflow-hidden shadow-lg shadow-indigo-500/20 border border-indigo-500/30 flex items-center justify-center bg-slate-900">
+                        <img src="/logo.png" alt="ShomsRadar Logo" className="w-full h-full object-cover" />
+                    </div>
+                    <div>
+                        <h1 className="font-bold text-lg leading-tight tracking-tight flex items-center gap-1">Shoms<span className="text-indigo-400">Radar</span></h1>
+                        <p className="text-[10px] text-slate-400 mt-1 leading-none hidden md:block">Decoding the Fear of Crime in Shomolu</p>
+                    </div>
+                </div>
 
+                <div className="flex-1 flex justify-center px-4 max-w-xl">
+                    <SearchBar onSearch={handleSearch} onUseLocation={handleUseLocation} />
+                </div>
+
+                <div className="flex items-center gap-4 justify-end">
+                    <div className="hidden lg:block">
+                        <DayNightToggle isNightMode={isNightMode} onToggle={() => setIsNightMode(!isNightMode)} />
+                    </div>
+                    <ExportControls 
+                        filteredData={filteredData}
+                        filtersText={Object.entries(filters).filter(([k,v])=>v).map(([k])=>k).join(', ') || 'None'}
+                        activeLayersText={[showHeatmap&&'Heatmap', showRiskZones&&'RTM', showNearRepeats&&'Near-Repeat', showLisa&&'LISA'].filter(Boolean).join(', ') || 'Base'}
+                        mapElementId="map-export-container"
+                        statsElementId="analytics-panel"
+                    />
+                    <button onClick={() => setSidebarOpen(!sidebarOpen)} className="lg:hidden p-2 text-slate-300">
+                        <Menu className="w-6 h-6" />
+                    </button>
+                </div>
+            </header>
+
+            <div className="flex-1 flex overflow-hidden">
             {/* Mobile Sidebar Overlay */}
             {sidebarOpen && (
                 <div
@@ -201,21 +232,12 @@ function App() {
                 />
             )}
 
-            {/* Sidebar */}
+            {/* Left Sidebar */}
             <aside className={`
-        fixed lg:static inset-y-0 left-0 z-50 w-72 bg-slate-950 border-r border-slate-800 transform transition-transform duration-300 ease-in-out
+        fixed lg:static inset-y-0 left-0 z-40 w-72 bg-slate-950 border-r border-slate-800 transform transition-transform duration-300 ease-in-out
         ${sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
       `}>
-                <div className="p-6 h-full flex flex-col">
-                    <div className="flex items-center gap-3 mb-8 group cursor-default">
-                        <div className="w-10 h-10 rounded-xl overflow-hidden shadow-lg shadow-indigo-500/20 border border-indigo-500/30 transition-transform group-hover:scale-110 flex items-center justify-center bg-slate-900">
-                            <img src="/logo.png" alt="ShomsRadar Logo" className="w-full h-full object-cover" />
-                        </div>
-                        <div>
-                            <h1 className="font-bold text-lg leading-tight tracking-tight">Shoms<br /><span className="text-indigo-400">Radar</span></h1>
-                            <p className="text-[10px] text-slate-400 mt-1 leading-snug">Decoding the Fear of Crime in Shomolu</p>
-                        </div>
-                    </div>
+                <div className="p-6 h-full flex flex-col overflow-y-auto">
 
                     <div className="mb-8 space-y-2">
                         <h2 className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-3">Story Presets</h2>
@@ -339,29 +361,9 @@ function App() {
 
             {/* Main Content */}
             <main className="flex-1 flex flex-col h-full relative overflow-hidden">
-                {/* Mobile Header */}
-                <div className="lg:hidden p-4 bg-slate-950 border-b border-slate-800 flex items-center justify-between z-30">
-                    <h1 className="font-bold text-lg">ShomsRadar</h1>
-                    <button onClick={() => setSidebarOpen(true)} className="p-2 text-slate-300">
-                        <Menu className="w-6 h-6" />
-                    </button>
-                    <div className="ml-auto mr-4">
-                        <DayNightToggle isNightMode={isNightMode} onToggle={() => setIsNightMode(!isNightMode)} />
-                    </div>
-                </div>
-
                 <div className="flex-1 flex flex-col lg:flex-row h-full overflow-hidden">
-                    {/* Map Section - Takes 2/3 on desktop */}
-                    <div id="map-export-container" className="flex-1 h-[50vh] lg:h-full p-4 lg:p-6 relative">
-                        <ExportControls 
-                            filteredData={filteredData}
-                            filtersText={Object.entries(filters).filter(([k,v])=>v).map(([k])=>k).join(', ') || 'None'}
-                            activeLayersText={[showHeatmap&&'Heatmap', showRiskZones&&'RTM', showNearRepeats&&'Near-Repeat', showLisa&&'LISA'].filter(Boolean).join(', ') || 'Base'}
-                            mapElementId="map-export-container"
-                            statsElementId="analytics-panel"
-                        />
-                        <SearchBar onSearch={handleSearch} onUseLocation={handleUseLocation} />
-
+                    {/* Map Section */}
+                    <div id="map-export-container" className="flex-1 h-[50vh] lg:h-full relative border-r border-slate-800 bg-black">
                         {searchReport && (
                             <SafetyCard
                                 report={searchReport}
@@ -372,16 +374,12 @@ function App() {
                             />
                         )}
 
-                        <div className="absolute top-6 left-6 z-10 bg-slate-900/90 backdrop-blur px-4 py-2 rounded-lg border border-slate-700 shadow-xl pointer-events-none mt-16 md:mt-0">
+                        <div className="absolute top-4 left-4 z-[400] bg-slate-900/90 backdrop-blur px-4 py-2 rounded-lg border border-slate-700 shadow-xl pointer-events-none">
                             <h2 className="text-sm font-semibold text-slate-200">Live Radar Map</h2>
                             <div className="flex items-center gap-3 mt-1 text-xs">
                                 <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-green-500"></span> Safe (≥3)</span>
                                 <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-red-500"></span> Unsafe (&lt;3)</span>
                             </div>
-                        </div>
-
-                        <div className="absolute top-6 right-6 z-10 hidden lg:block">
-                            <DayNightToggle isNightMode={isNightMode} onToggle={() => setIsNightMode(!isNightMode)} />
                         </div>
 
                         <MapComponent 
@@ -541,6 +539,7 @@ function App() {
                     </div>
                 </div>
             </main>
+            </div>
         </div>
     );
 }

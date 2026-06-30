@@ -22,7 +22,7 @@ const ExportControls = ({ filteredData, filtersText, activeLayersText, mapElemen
                     success = await exportToPNG(mapElementId, filtersText, activeLayersText);
                     break;
                 case 'PDF':
-                    success = await exportToPDF(mapElementId, statsElementId);
+                    success = await exportToPDF(mapElementId, statsElementId, "ShomsRadar_Report.pdf", filteredData);
                     break;
                 case 'CSV':
                     success = exportCSV(filteredData, `ShomsRadar_Data_${new Date().toISOString().split('T')[0]}.csv`);
@@ -49,18 +49,18 @@ const ExportControls = ({ filteredData, filtersText, activeLayersText, mapElemen
     };
 
     return (
-        <div className="absolute top-4 right-4 z-[1000] export-controls-ignore flex flex-col items-end">
+        <div className="relative z-[1000] export-controls-ignore flex flex-col items-end">
             <button 
                 onClick={() => setIsOpen(!isOpen)}
-                className="bg-white text-slate-800 shadow-xl border border-slate-200 px-4 py-2 rounded-lg font-bold text-sm flex items-center gap-2 hover:bg-slate-50 transition-colors"
+                className="bg-indigo-600 hover:bg-indigo-700 text-white shadow-lg px-4 py-2 rounded-lg font-bold text-sm flex items-center gap-2 transition-colors border border-indigo-500"
             >
-                <Download className="w-4 h-4 text-indigo-600" />
+                <Download className="w-4 h-4" />
                 Export Map
                 <ChevronDown className={`w-4 h-4 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
             </button>
             
             {isOpen && (
-                <div className="mt-2 bg-white rounded-xl shadow-2xl border border-slate-100 w-64 overflow-hidden animate-in fade-in slide-in-from-top-2">
+                <div className="absolute top-full right-0 mt-2 bg-white rounded-xl shadow-2xl border border-slate-100 w-64 overflow-hidden animate-in fade-in slide-in-from-top-2">
                     <div className="p-2 border-b border-slate-100 bg-slate-50">
                         <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider text-center">Export Options</p>
                     </div>

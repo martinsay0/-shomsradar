@@ -3,8 +3,9 @@ import * as turf from '@turf/turf';
 export const calculateNearRepeats = (allData, distanceBandMeters = 200) => {
     // 1. Identify High-Fear / Incident Points
     const highFearPoints = allData.filter(p => 
-        (p.fear_indicators && p.fear_indicators.fear_robbery_street > 3) || 
-        (p.victimization && p.victimization.stolen_from === 'Yes')
+        (p.fear_indicators && p.fear_indicators.fear_robbery_street >= 2) || 
+        (p.victimization && p.victimization.stolen_from === 'Yes') ||
+        (p.future_risk_score > 30)
     );
 
     const distanceKm = distanceBandMeters / 1000;

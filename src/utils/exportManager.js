@@ -10,7 +10,6 @@ const captureMap = async (mapElementId) => {
 
     return await html2canvas(mapElement, {
         useCORS: true,
-        allowTaint: true,
         logging: false,
         ignoreElements: (node) => {
             return node.classList && (node.classList.contains('leaflet-control-container') || node.classList.contains('leaflet-top') || node.classList.contains('export-controls-ignore'));
@@ -93,30 +92,87 @@ export const exportToPNG = async (mapElementId, filtersText = "None", activeLaye
 /**
  * Captures the Map and Dashboard HTML elements and generates a PDF report.
  */
-export const exportToPDF = async (mapElementId, statsElementId, filename = "ShomsRadar_Report.pdf") => {
+export const exportToPDF = async (mapElementId, statsElementId, filename = "ShomsRadar_Report.pdf", filteredData = []) => {
     try {
         const doc = new jsPDF('p', 'mm', 'a4');
         const pdfWidth = doc.internal.pageSize.getWidth();
         const pdfHeight = doc.internal.pageSize.getHeight();
-        let currentY = 10;
+        let currentY = 15;
 
-        doc.setFontSize(20);
-        doc.text("ShomsRadar: Advanced GIS Analytics Report", 10, currentY);
-        currentY += 10;
+        // Header
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(22);
+        doc.setTextColor(15, 23, 42);
+        doc.text("ShomsRadar Spatial Analytics Report", 15, currentY);
+        
+        currentY += 8;
+        doc.setFont("helvetica", "normal");
         doc.setFontSize(10);
-        doc.text(`Generated on: ${new Date().toLocaleString()}`, 10, currentY);
-        currentY += 10;
+        doc.setTextColor(100, 116, 139);
+        doc.text(`Generated on: ${new Date().toLocaleString()} | CPTED Engine`, 15, currentY);
+        
+        currentY += 15;
+
+        // --- AUTOMATED TEXTUAL ANALYSIS ---
+        if (filteredData && filteredData.length > 0) {
+            doc.setFont("helvetica", "bold");
+            doc.setFontSize(14);
+            doc.setTextColor(15, 23, 42);
+            doc.text("Executive Summary", 15, currentY);
+            currentY += 8;
+
+            const total = filteredData.length;
+            const highRisk = filteredData.filter(d => d.future_risk_score > 30).length;
+            const darkSpots = filteredData.filter(d => d.observed_environment?.has_streetlight === "No").length;
+            const brokenWindows = filteredData.filter(d => d.observed_environment?.visible_disorder?.length > 0).length;
+
+            doc.setFont("helvetica", "normal");
+            doc.setFontSize(11);
+            doc.setTextColor(51, 65, 85);
+            
+            // Stats
+            doc.text(`• Total Locations Analyzed: ${total}`, 20, currentY); currentY += 6;
+            doc.text(`• High Risk Zones Detected: ${highRisk} (${Math.round((highRisk/total)*100)}%)`, 20, currentY); currentY += 6;
+            doc.text(`• Lighting Deficiencies: ${darkSpots} locations lack proper street lighting.`, 20, currentY); currentY += 6;
+            doc.text(`• Visible Disorder: ${brokenWindows} locations show signs of physical neglect.`, 20, currentY); currentY += 12;
+
+            // Solutions
+            doc.setFont("helvetica", "bold");
+            doc.text("Proposed CPTED Interventions:", 15, currentY); currentY += 8;
+            doc.setFont("helvetica", "normal");
+            
+            if (darkSpots > total * 0.3) {
+                doc.text("Priority Action: Implement strategic public lighting to enhance natural surveillance.", 20, currentY);
+                currentY += 6;
+            }
+            if (brokenWindows > total * 0.3) {
+                doc.text("Priority Action: Enforce municipal maintenance and clear abandoned structures/litter.", 20, currentY);
+                currentY += 6;
+            }
+            if (highRisk > 0) {
+                doc.text("Priority Action: Increase targeted police patrols in clustered predictive risk zones.", 20, currentY);
+                currentY += 6;
+            }
+            currentY += 5;
+        }
 
         // Capture Map
         const mapCanvas = await captureMap(mapElementId);
         const mapImgData = mapCanvas.toDataURL('image/jpeg', 0.9);
-        const imgWidth = pdfWidth - 20;
+        const imgWidth = pdfWidth - 30;
         const imgHeight = (mapCanvas.height * imgWidth) / mapCanvas.width;
         
-        doc.text("Risk Surface Map:", 10, currentY);
-        currentY += 5;
-        doc.addImage(mapImgData, 'JPEG', 10, currentY, imgWidth, imgHeight);
-        currentY += imgHeight + 10;
+        if (currentY + imgHeight > pdfHeight - 20) {
+            doc.addPage();
+            currentY = 15;
+        }
+        
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(14);
+        doc.text("Risk Surface Map", 15, currentY);
+        currentY += 6;
+        doc.addImage(mapImgData, 'JPEG', 15, currentY, imgWidth, imgHeight);
+        currentY += imgHeight + 15;
 
         // Capture Stats/Dashboard
         const statsElement = document.getElementById(statsElementId);

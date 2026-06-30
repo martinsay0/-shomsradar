@@ -72,6 +72,7 @@ const MapComponent = ({ data, isNightMode, showHeatmap, showRiskZones, kdeBandwi
                 <TileLayer
                     attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
                     url={tileUrl}
+                    crossOrigin="anonymous"
                 />
 
                 {showHeatmap && (() => {
