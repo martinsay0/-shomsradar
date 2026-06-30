@@ -189,6 +189,7 @@ function App() {
         }
     };
 
+    return (
         <div className="flex flex-col h-screen w-full bg-slate-900 text-slate-100 overflow-hidden font-sans">
             {/* Top Navbar */}
             <header className="h-[72px] bg-slate-950 border-b border-slate-800 flex items-center justify-between px-6 z-50 shrink-0">
