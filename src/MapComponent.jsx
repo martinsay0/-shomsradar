@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import { MapContainer, TileLayer, Popup, Tooltip, Circle, useMap, Marker, GeoJSON, Polyline } from 'react-leaflet';
+import { MapContainer, TileLayer, Popup, Tooltip, Circle, Polygon, useMap, Marker, GeoJSON, Polyline } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import 'leaflet.heat';
@@ -140,7 +140,7 @@ const MapComponent = ({ data, isNightMode, showHeatmap, showRiskZones, kdeBandwi
                     />
                 )}
 
-                {showNearRepeats && nearRepeatData?.propagationZones?.features.map((feature, idx) => (
+                {showNearRepeats && Array.isArray(nearRepeatData?.propagationZones) && nearRepeatData.propagationZones.map((feature, idx) => (
                     <Polygon 
                         key={`nr-poly-${idx}`} 
                         positions={feature.geometry.coordinates[0].map(c => [c[1], c[0]])}
@@ -156,7 +156,7 @@ const MapComponent = ({ data, isNightMode, showHeatmap, showRiskZones, kdeBandwi
                     </Polygon>
                 ))}
 
-                {showNearRepeats && nearRepeatData?.linkLines.map((line, idx) => (
+                {showNearRepeats && nearRepeatData?.linkLines?.map((line, idx) => (
                     <Polyline 
                         key={`nr-line-${idx}`} 
                         positions={line} 
