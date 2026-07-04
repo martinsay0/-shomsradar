@@ -141,10 +141,10 @@ const MapComponent = ({ data, isNightMode, showHeatmap, showRiskZones, kdeBandwi
                 )}
 
                 {showNearRepeats && Array.isArray(nearRepeatData?.propagationZones) && nearRepeatData.propagationZones.map((feature, idx) => (
-                    <Polygon 
+                    <GeoJSON 
                         key={`nr-poly-${idx}`} 
-                        positions={feature.geometry.coordinates[0].map(c => [c[1], c[0]])}
-                        pathOptions={{ 
+                        data={feature}
+                        style={{ 
                             color: '#ef4444', 
                             fillColor: '#ef4444', 
                             fillOpacity: (layerOpacity?.nearRepeat || 0.8) * 0.2, 
@@ -153,7 +153,7 @@ const MapComponent = ({ data, isNightMode, showHeatmap, showRiskZones, kdeBandwi
                         }}
                     >
                         <Popup>Contagious Risk Zone</Popup>
-                    </Polygon>
+                    </GeoJSON>
                 ))}
 
                 {showNearRepeats && nearRepeatData?.linkLines?.map((line, idx) => (
