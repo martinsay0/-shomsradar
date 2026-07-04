@@ -9,11 +9,13 @@ def convert_csv_to_json(input_pattern='survey_data*.xlsx', output_file='realData
     It loads coordinates from survey_data(1).xlsx sheets and merges them with the survey responses in survey_data(2).xlsx.
     """
     
-    # 1. LOAD COORDINATES (survey_data(1).xlsx)
-    print("Loading coordinates from survey_data(1).xlsx...")
+    # 1. LOAD COORDINATES (survey_data(1).xlsx and survey_data(3).xlsx)
+    print("Loading coordinates from survey files...")
+    points_dfs = []
+    
+    # Process survey_data(1).xlsx
     try:
         xl1 = pd.ExcelFile('survey_data(1).xlsx')
-        points_dfs = []
         for sheet in xl1.sheet_names:
             if sheet in ['PHOTOS', 'TRACKS', 'TRACK_POINTS', 'FEATURE_POINTS']:
                 continue
@@ -24,16 +26,34 @@ def convert_csv_to_json(input_pattern='survey_data*.xlsx', output_file='realData
                 df_clean.columns = ['ID', 'Latitude', 'Longitude', 'Remarks']
                 df_clean['sheet'] = sheet
                 points_dfs.append(df_clean)
-        
-        df_coords = pd.concat(points_dfs, ignore_index=True)
-        # Convert ID to numeric
-        df_coords['ID'] = pd.to_numeric(df_coords['ID'], errors='coerce')
-        df_coords = df_coords.dropna(subset=['ID'])
-        df_coords['ID'] = df_coords['ID'].astype(int)
-        print(f"Successfully loaded {len(df_coords)} coordinate points from {len(points_dfs)} sheets.")
     except Exception as e:
-        print(f"Error loading coordinates: {e}")
+        print(f"Error loading survey_data(1).xlsx: {e}")
+
+    # Process survey_data(3).xlsx
+    try:
+        xl3 = pd.ExcelFile('survey_data(3).xlsx')
+        for sheet in xl3.sheet_names:
+            df = xl3.parse(sheet)
+            if 'Serial Number' in df.columns and 'Latitude' in df.columns:
+                df_clean = df[['Serial Number', 'Latitude', 'Longitude', 'Street Name']].copy()
+                df_clean.columns = ['ID', 'Latitude', 'Longitude', 'Remarks']
+                df_clean['sheet'] = sheet
+                points_dfs.append(df_clean)
+    except Exception as e:
+        print(f"Error loading survey_data(3).xlsx: {e}")
+
+    if not points_dfs:
+        print("Error loading coordinates: No objects to concatenate")
         return
+
+    df_coords = pd.concat(points_dfs, ignore_index=True)
+    # Convert ID to numeric
+    df_coords['ID'] = pd.to_numeric(df_coords['ID'], errors='coerce')
+    df_coords = df_coords.dropna(subset=['ID'])
+    df_coords['ID'] = df_coords['ID'].astype(int)
+    # Drop duplicates, keeping the later files (survey_data(3)) if they override
+    df_coords = df_coords.drop_duplicates(subset=['ID'], keep='last')
+    print(f"Successfully loaded {len(df_coords)} unique coordinate points.")
 
     # 2. LOAD SURVEY RESPONSES (survey_data(2).xlsx)
     print("Loading survey responses from survey_data(2).xlsx...")
