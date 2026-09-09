@@ -54,12 +54,8 @@ const MapComponent = ({ data, isNightMode, showHeatmap, showRiskZones, kdeBandwi
     // Center roughly on Bariga
     const center = [6.54, 3.39];
 
-    // Different tile styles for Day vs Night
-    // Night: Dark Matter (CartoDB)
-    // Day: Positron (CartoDB) or OpenStreetMap
-    const tileUrl = isNightMode
-        ? "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
-        : "https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png";
+    // Standard OpenStreetMap tiles (no API key required)
+    const tileUrl = "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png";
 
     return (
         <div className="h-full w-full rounded-2xl overflow-hidden shadow-2xl border border-slate-700 relative z-0">
@@ -73,6 +69,7 @@ const MapComponent = ({ data, isNightMode, showHeatmap, showRiskZones, kdeBandwi
                     attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
                     url={tileUrl}
                     crossOrigin="anonymous"
+                    className={isNightMode ? "map-tiles-dark-mode" : ""}
                 />
 
                 {showHeatmap && (() => {
