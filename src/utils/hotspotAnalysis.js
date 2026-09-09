@@ -5,12 +5,22 @@ export const calculateLISAHotspots = (allData, cellSideMeters = 150) => {
 
     const cellSideKm = cellSideMeters / 1000;
 
-    // 1. Create Turf Points and find Bounding Box
-    const points = allData.map(p => turf.point([p.coordinates[1], p.coordinates[0]], { 
+    // 1. Create Turf Points and find Bounding Box, filtering out invalid or corrupted coordinates
+    const validPointsData = allData.filter(p => 
+        p.coordinates && 
+        p.coordinates.length === 2 &&
+        p.coordinates[0] >= -90 && p.coordinates[0] <= 90 &&
+        p.coordinates[1] >= -180 && p.coordinates[1] <= 180 &&
+        !(p.coordinates[0] === 0 && p.coordinates[1] === 0)
+    );
+
+    const points = validPointsData.map(p => turf.point([p.coordinates[1], p.coordinates[0]], { 
         fear: p.fear_indicators.fear_robbery_street || 0,
         hasNoLight: p.observed_environment.has_streetlight === "No" ? 1 : 0
     }));
     
+    if (points.length === 0) return { grid: null, stats: {} };
+
     const featureCollection = turf.featureCollection(points);
     const bbox = turf.bbox(featureCollection);
 
